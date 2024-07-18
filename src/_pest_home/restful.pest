@@ -1,0 +1,114 @@
+comment_line  = @{ (!NEWLINE ~ ANY)* }
+comment_block = @{ (!"*/" ~ ANY)* }
+COMMENT       = ${ ("//" ~ blank* ~ comment_line) | ("/*" ~ comment_block ~ "*/") }
+WHITESPACE    = _{ " " | "\t" | NEWLINE }
+blank         = _{ " " | "\t" }
+
+// 命名空间定义
+namespace_lang  = @{
+    "java"
+  | "ts"
+  | "rs"
+}
+namespace_value = @{ (ASCII_ALPHANUMERIC | "_")+ ~ ("." ~ (ASCII_ALPHANUMERIC | "_")+)* }
+namespace       = ${ "namespace" ~ blank+ ~ namespace_lang ~ blank+ ~ namespace_value }
+
+// import引用
+import_value = @{ (ASCII_ALPHANUMERIC | "." | "_" | "/" | "\\")+ }
+import       = ${ "import" ~ blank+ ~ "\"" ~ import_value ~ "\"" }
+
+// 预置类型定义 built-in type
+contain_map_keytype   = @{ type }
+contain_map_valuetype = @{ type }
+contain_map           = !{ "map" ~ "<" ~ contain_map_keytype ~ "," ~ contain_map_valuetype ~ ">" }
+contain_list_type     = @{ type }
+contain_list          = !{ "list" ~ "<" ~ contain_list_type ~ ">" }
+contain_set_type      = @{ type }
+contain_set           = !{ "set" ~ "<" ~ contain_set_type ~ ">" }
+ref_enum              = !{ "enum" ~ "<" ~ utype ~ ">" }
+intype                = ${
+    "boolean"
+  | "byte"
+  | "i16"
+  | "i32"
+  | "i64"
+  | "short"
+  | "int"
+  | "long"
+  | "double"
+  | "binary"
+  | "string"
+}
+
+// 用户类型定义
+utype_namespace  = @{ (ASCII_ALPHANUMERIC | "_")+ }
+utype_customname = @{ (ASCII_ALPHANUMERIC | "_")+ }
+utype            = ${ (utype_namespace ~ ".")? ~ utype_customname }
+
+type = ${
+    intype
+  | contain_map
+  | contain_list
+  | contain_set
+  | ref_enum
+  | utype
+}
+
+void = @{ "void" }
+
+// 类型修饰符定义
+required = @{ "!" | "?" }
+
+// class定义
+class_name       = @{ utype_customname }
+class_field_name = @{ (ASCII_ALPHANUMERIC | "_")+ }
+class_field      = ${
+    (((contain_list | contain_map | contain_set | ref_enum) ~ WHITESPACE*) | ((intype | utype) ~ WHITESPACE+)) ~ class_field_name ~ (WHITE_SPACE* ~ required)? ~ (WHITESPACE* ~ ";")?
+}
+class            = ${
+    "class" ~ WHITESPACE+ ~ class_name ~ WHITESPACE* ~ "{" ~ (WHITESPACE | COMMENT | class_field)* ~ "}"
+}
+
+// 枚举定义
+enum_name               = @{ utype_customname }
+enum_instance_name      = @{ (ASCII_ALPHANUMERIC | "_")+ }
+enum_instance_constant  = @{ ASCII_DIGIT+ }
+enum_instance_separator = _{ "," | ";" }
+enum_instance           = ${ enum_instance_name ~ WHITESPACE* ~ "=" ~ WHITESPACE* ~ enum_instance_constant }
+enum                    = ${
+    "enum" ~ WHITESPACE+ ~ enum_name ~ WHITESPACE* ~ "{" ~ (WHITESPACE | COMMENT)* ~ (enum_instance ~ (WHITESPACE | COMMENT)* ~ (enum_instance_separator? ~ (WHITESPACE | COMMENT)* ~ enum_instance ~ (WHITESPACE | COMMENT)*)* ~ enum_instance_separator?)? ~ (WHITESPACE | COMMENT)* ~ "}"
+}
+
+// 入参定义
+param_name = @{ (ASCII_ALPHANUMERIC | "_")+ }
+param      = ${ type ~ WHITESPACE+ ~ param_name ~ required? }
+
+// interface定义
+interface_name          = @{ utype_customname }
+interface_function_name = @{ (ASCII_ALPHANUMERIC | "_")+ }
+interface_function      = ${
+    (void | type) ~ WHITESPACE+ ~ interface_function_name ~ WHITESPACE* ~ "(" ~ WHITESPACE* ~ ((WHITESPACE | COMMENT)* ~ param ~ WHITESPACE* ~ ("," ~ (WHITESPACE | COMMENT)* ~ param)* ~ WHITESPACE*)? ~ ")" ~ (WHITESPACE* ~ ";")?
+}
+interface               = ${
+    "interface" ~ WHITESPACE+ ~ interface_name ~ WHITESPACE* ~ "{" ~ (WHITESPACE | COMMENT | annotation | interface_function)* ~ "}"
+}
+
+// 注解定义
+annotation_name  = @{
+    "uri"
+  | "postUri"
+  | "getUri"
+  | "putUri"
+  | "patchUri"
+  | "deleteUri"
+  | "formData"
+  | "page"
+  | "request"
+  | "response"
+}
+annotation_value = @{ (!("\n" | ",") ~ (ASCII_ALPHANUMERIC | blank | "'" | "\"" | "/" | "_" | "{" | "}"))* }
+annotation       =  { "@" ~ blank* ~ annotation_name ~ blank* ~ ("(" ~ (annotation_value ~ ("," ~ annotation_value)*)? ~ ")")? }
+
+root = {
+    SOI ~ (namespace | import | enum | class | interface | annotation)* ~ EOI
+}

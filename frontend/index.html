@@ -1,0 +1,47 @@
+<html>
+  <script type="module">
+    import init, { test, parse_restl } from './wasm_demo.js'
+
+    const content = `namespace java com.github.alphafoxz.oneboot.sdk.gen.restl.ifaces
+            /*测试用。。。。格式不要太标准
+
+            */
+            namespace ts sdk.restl
+            import "../structs/SdkResponseStruct.restl"
+
+            //rest类型
+            enum ThriftTypeEnum {
+                SERVER=1,
+                CLIENT = 2
+            }
+
+            class ThriftUpdateParam {
+                //主键
+                i64 id
+            string name
+            ThriftTypeEnum type
+                map<string, string>info?
+                SdkResponseStruct.SdkStringResponseStruct ext?
+            }
+
+            class ThriftUpdateResponse
+            {
+                boolean success
+            }
+
+            interface SdkThriftIface {
+                ThriftUpdateResponse testFunction (ThriftUpdateParam  param? )
+            }`
+
+    async function run() {
+      await init()
+      const ast = parse_restl(content)
+      console.warn('解析语法树', ast)
+    }
+    run()
+  </script>
+  <head> </head>
+  <body>
+    <h1>wasm-demo</h1>
+  </body>
+</html>
